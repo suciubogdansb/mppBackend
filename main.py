@@ -1,4 +1,7 @@
+import os
+from contextlib import asynccontextmanager
 from uuid import UUID
+import uvicorn
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,12 +10,30 @@ from Model.Exceptions.RepositoryException import RepositoryException
 from Model.Movie import Movie
 from Repository.MemoryRepository import MemoryRepository
 from Service.Service import Service
+import dotenv
 
-app = FastAPI()
+dotenv.load_dotenv()
+backendPort = int(os.getenv("BACKEND_PORT"))
+frontendPort = int(os.getenv("FRONTEND_PORT"))
+
+repository = MemoryRepository()
+service = Service(repository)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Load the ML model
+    repository.loadData()
+    yield
+    # Clean up the ML models and release the resources
+    repository.saveData()
+
+
+app = FastAPI(lifespan=lifespan)
 
 origins = [
     "http://localhost",
-    "http://localhost:3000",
+    f"http://localhost:{frontendPort}",
 ]
 
 app.add_middleware(
@@ -23,18 +44,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-repository = MemoryRepository()
-service = Service(repository)
 
-
-@app.on_event("startup")
-async def loadData():
-    repository.loadData()
-
-
-@app.on_event("shutdown")
-async def saveData():
-    repository.saveData()
+# @app.on_event("startup")
+# async def loadData():
+#     repository.loadData()
+#
+#
+# @app.on_event("shutdown")
+# async def saveData():
+#     repository.saveData()
 
 
 @app.get("/items", response_model=list[Movie])
@@ -73,3 +91,7 @@ async def deleteMovie(movieId: UUID):
         service.deleteMovie(movieId)
     except RepositoryException:
         raise HTTPException(status_code=404, detail="Id not found.")
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=backendPort)
