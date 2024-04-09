@@ -12,14 +12,14 @@ from Repository.MemoryRepository import MemoryRepository
 from Service.Service import Service
 import dotenv
 
+import socketio
+
 dotenv.load_dotenv()
 backendPort = int(os.getenv("BACKEND_PORT"))
 frontendPort = int(os.getenv("FRONTEND_PORT"))
 
 repository = MemoryRepository()
 service = Service(repository)
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Load the ML model
@@ -28,13 +28,13 @@ async def lifespan(app: FastAPI):
     # Clean up the ML models and release the resources
     repository.saveData()
 
-
-app = FastAPI(lifespan=lifespan)
-
 origins = [
     "http://localhost",
     f"http://localhost:{frontendPort}",
 ]
+
+socketIo = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=origins)
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -44,6 +44,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+socketApp = socketio.ASGIApp(socketIo, app)
 
 # @app.on_event("startup")
 # async def loadData():
@@ -53,6 +54,13 @@ app.add_middleware(
 # @app.on_event("shutdown")
 # async def saveData():
 #     repository.saveData()
+@socketIo.event
+async def connect(sid, environ):
+    print(f"connect {sid}")
+
+@socketIo.event
+async def disconnect(sid):
+    print(f"disconnect {sid}")
 
 
 @app.get("/items", response_model=list[Movie])
@@ -63,7 +71,9 @@ async def getAll():
 @app.post("/items", status_code=201)
 async def addMovie(movie: Movie):
     try:
-        return service.addMovie(movie)
+        result = service.addMovie(movie)
+        await socketIo.emit("dataModified", {"event": "add"})
+        return result
     except RepositoryException:
         raise HTTPException(status_code=404, detail="Id already used.")
 
@@ -80,7 +90,9 @@ async def getItem(movieId: UUID):
 async def updateMovie(movieId: UUID, movie: Movie):
     try:
         movie.id = movieId
-        return service.updateMovie(movie)
+        result = service.updateMovie(movie)
+        await socketIo.emit("dataModified", {"event": "update"})
+        return result
     except RepositoryException:
         raise HTTPException(status_code=404, detail="Id not found.")
 
@@ -89,9 +101,13 @@ async def updateMovie(movieId: UUID, movie: Movie):
 async def deleteMovie(movieId: UUID):
     try:
         service.deleteMovie(movieId)
+        await socketIo.emit("dataModified", {"event": "delete"})
     except RepositoryException:
         raise HTTPException(status_code=404, detail="Id not found.")
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=backendPort)
+    uvicorn.run(socketApp, host="0.0.0.0", port=backendPort)
+
+# To run cronjob.py, execute the following command:
+# python cronjob.py
