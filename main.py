@@ -11,7 +11,6 @@ from Model.Movie import Movie
 from Repository.MemoryRepository import MemoryRepository
 from Service.Service import Service
 import dotenv
-
 import socketio
 
 dotenv.load_dotenv()
@@ -44,7 +43,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-socketApp = socketio.ASGIApp(socketIo, app)
 
 # @app.on_event("startup")
 # async def loadData():
@@ -57,6 +55,11 @@ socketApp = socketio.ASGIApp(socketIo, app)
 @socketIo.event
 async def connect(sid, environ):
     print(f"connect {sid}")
+
+@socketIo.event
+async def mockAdded(sid, data):
+    print(f"mockAdded {sid} {data}")
+    await socketIo.emit("dataModified", data)
 
 @socketIo.event
 async def disconnect(sid):
@@ -72,7 +75,7 @@ async def getAll():
 async def addMovie(movie: Movie):
     try:
         result = service.addMovie(movie)
-        await socketIo.emit("dataModified", {"event": "add"})
+        # await socketIo.emit("dataModified", {"event": "add"})
         return result
     except RepositoryException:
         raise HTTPException(status_code=404, detail="Id already used.")
@@ -91,7 +94,7 @@ async def updateMovie(movieId: UUID, movie: Movie):
     try:
         movie.id = movieId
         result = service.updateMovie(movie)
-        await socketIo.emit("dataModified", {"event": "update"})
+        # await socketIo.emit("dataModified", {"event": "update"})
         return result
     except RepositoryException:
         raise HTTPException(status_code=404, detail="Id not found.")
@@ -101,10 +104,12 @@ async def updateMovie(movieId: UUID, movie: Movie):
 async def deleteMovie(movieId: UUID):
     try:
         service.deleteMovie(movieId)
-        await socketIo.emit("dataModified", {"event": "delete"})
+        # await socketIo.emit("dataModified", {"event": "delete"})
     except RepositoryException:
         raise HTTPException(status_code=404, detail="Id not found.")
 
+
+socketApp = socketio.ASGIApp(socketIo, app)
 
 if __name__ == "__main__":
     uvicorn.run(socketApp, host="0.0.0.0", port=backendPort)
