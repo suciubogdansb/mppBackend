@@ -2,7 +2,7 @@ import json
 from uuid import UUID
 
 from Model.Exceptions.RepositoryException import RepositoryException
-from Model.Movie import Movie
+from Model.Schemas.Movie import Movie
 from Repository.RepositoryInterface import RepositoryInterface
 
 
@@ -20,16 +20,16 @@ class MemoryRepository(RepositoryInterface):
         return self.__entities[movieId]
 
     def addEntity(self, movie: Movie) -> dict[str, str]:
-        if movie.id in self.__entities:
+        if movie.movieId in self.__entities:
             raise RepositoryException("Id already used.")
-        self.__entities[movie.id] = movie
-        return {"message": f"{movie.id} added successfully"}
+        self.__entities[movie.movieId] = movie
+        return {"message": f"{movie.movieId} added successfully"}
 
     def updateEntity(self, movie: Movie) -> dict[str, str]:
-        if movie.id not in self.__entities:
+        if movie.movieId not in self.__entities:
             raise RepositoryException("Id not found.")
-        self.__entities[movie.id] = movie
-        return {"message": f"{movie.id} updated successfully"}
+        self.__entities[movie.movieId] = movie
+        return {"message": f"{movie.movieId} updated successfully"}
 
     def deleteEntity(self, movieId: UUID) -> dict[str, str]:
         if movieId not in self.__entities:

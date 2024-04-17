@@ -33,3 +33,12 @@ class RepositoryInterface(ABC):
     @abstractmethod
     def saveData(self):
         pass
+
+    def getGenres(self):
+        pass
+
+    def addGenre(self, entity):
+        pass
+
+    def deleteGenre(self, id):
+        pass

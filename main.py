@@ -6,19 +6,28 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from Model import DatabaseModels
+from Model.DatabaseModels import models
 from Model.Exceptions.RepositoryException import RepositoryException
-from Model.Movie import Movie
+from Model.Schemas.Genre import Genre
+from Model.Schemas.Movie import Movie
+from Repository.DatabaseRepository import DatabaseRepository
 from Repository.MemoryRepository import MemoryRepository
 from Service.Service import Service
 import dotenv
 import socketio
 
+from database import engine, SessionLocal
+
 dotenv.load_dotenv()
 backendPort = int(os.getenv("BACKEND_PORT"))
 frontendPort = int(os.getenv("FRONTEND_PORT"))
 
-repository = MemoryRepository()
+repository = DatabaseRepository(SessionLocal())
 service = Service(repository)
+
+models.Base.metadata.create_all(bind=engine)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Load the ML model
@@ -26,6 +35,7 @@ async def lifespan(app: FastAPI):
     yield
     # Clean up the ML models and release the resources
     repository.saveData()
+
 
 origins = [
     "http://localhost",
@@ -56,10 +66,12 @@ app.add_middleware(
 async def connect(sid, environ):
     print(f"connect {sid}")
 
+
 @socketIo.event
 async def mockAdded(sid, data):
     print(f"mockAdded {sid} {data}")
     await socketIo.emit("dataModified", data)
+
 
 @socketIo.event
 async def disconnect(sid):
@@ -67,12 +79,13 @@ async def disconnect(sid):
 
 
 @app.get("/items", response_model=list[Movie])
-async def getAll():
-    return service.getAll()
+async def getAll(orderType: str = ""):
+    return service.getAll(orderType)
 
 
 @app.post("/items", status_code=201)
 async def addMovie(movie: Movie):
+    print("Adding movie")
     try:
         result = service.addMovie(movie)
         # await socketIo.emit("dataModified", {"event": "add"})
@@ -92,7 +105,7 @@ async def getItem(movieId: UUID):
 @app.put("/items/{movieId}")
 async def updateMovie(movieId: UUID, movie: Movie):
     try:
-        movie.id = movieId
+        movie.movieId = movieId
         result = service.updateMovie(movie)
         # await socketIo.emit("dataModified", {"event": "update"})
         return result
@@ -105,6 +118,24 @@ async def deleteMovie(movieId: UUID):
     try:
         service.deleteMovie(movieId)
         # await socketIo.emit("dataModified", {"event": "delete"})
+    except RepositoryException:
+        raise HTTPException(status_code=404, detail="Id not found.")
+
+@app.get("/genres", response_model=list[Genre])
+async def getGenres():
+    return service.getGenres()
+
+@app.post("/genres", status_code=201)
+async def addGenre(genre: Genre):
+    try:
+        return service.addGenre(genre)
+    except RepositoryException:
+        raise HTTPException(status_code=404, detail="Id already used.")
+
+@app.delete("/genres/{genreId}", status_code=204)
+async def deleteGenre(genreId: UUID):
+    try:
+        service.deleteGenre(genreId)
     except RepositoryException:
         raise HTTPException(status_code=404, detail="Id not found.")
 
