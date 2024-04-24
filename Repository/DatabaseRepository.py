@@ -44,7 +44,7 @@ class DatabaseRepository(RepositoryInterface):
             raise RepositoryException("Movie not found")
         movie.title = entity.title
         movie.year = entity.year
-        movie.genre_id = entity.genreId
+        movie.genreId = entity.genreId
         self.__database.commit()
         self.__database.refresh(movie)
         return movie
@@ -69,7 +69,7 @@ class DatabaseRepository(RepositoryInterface):
                 raise RepositoryException("Key constraints violated")
         movie.title = entity.title
         movie.year = entity.year
-        movie.genre_id = entity.genreId
+        movie.genreId = entity.genreId
         self.__database.commit()
         self.__database.refresh(movie)
         return movie
