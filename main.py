@@ -1,9 +1,11 @@
 import os
+import uuid
 from contextlib import asynccontextmanager
+from typing import Union, List
 from uuid import UUID
 import uvicorn
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from Model import DatabaseModels
@@ -28,6 +30,7 @@ repository = DatabaseRepository(SessionLocal())
 service = Service(repository)
 
 models.Base.metadata.create_all(bind=engine)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -80,8 +83,8 @@ async def disconnect(sid):
 
 
 @app.get("/items", response_model=list[Movie])
-async def getAll(orderType: str = ""):
-    return service.getAll(orderType)
+async def getAll(orderType: str = "", page: Union[int, None] = None):
+    return service.getAll(orderType, page)
 
 
 @app.post("/items", status_code=201)
@@ -122,9 +125,19 @@ async def deleteMovie(movieId: UUID):
     except RepositoryException:
         raise HTTPException(status_code=404, detail="Id not found.")
 
+
 @app.get("/genres", response_model=list[Genre])
-async def getGenres():
-    return service.getGenres()
+async def getGenres(page: Union[int, None] = None):
+    return service.getGenres(page)
+
+
+@app.get("/genres/{genreId}")
+async def getGenre(genreId: UUID):
+    try:
+        return service.getGenreById(genreId)
+    except RepositoryException:
+        raise HTTPException(status_code=404, detail="Genre not found.")
+
 
 @app.post("/genres", status_code=201)
 async def addGenre(genre: Genre):
@@ -133,6 +146,7 @@ async def addGenre(genre: Genre):
     except RepositoryException:
         raise HTTPException(status_code=404, detail="Id already used.")
 
+
 @app.delete("/genres/{genreId}", status_code=204)
 async def deleteGenre(genreId: UUID):
     try:
@@ -140,9 +154,15 @@ async def deleteGenre(genreId: UUID):
     except RepositoryException:
         raise HTTPException(status_code=404, detail="Id not found.")
 
+
 @app.post("/sync")
 async def sync(syncBatch: SyncModel):
     return service.sync(syncBatch)
+
+@app.get("/necessary", response_model=list[Genre])
+async def getNecessary(genres: str):
+    genres = [uuid.UUID(genre) for genre in genres.split("|")]
+    return service.getMultipleGenres(genres)
 
 
 socketApp = socketio.ASGIApp(socketIo, app)

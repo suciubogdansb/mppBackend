@@ -1,3 +1,4 @@
+from typing import Union
 from uuid import UUID
 
 from Model.Schemas.Movie import Movie
@@ -9,12 +10,11 @@ class Service:
     def __init__(self, repository: RepositoryInterface):
         self.__repository = repository
 
-    def getAll(self, orderType: str):
-        listOfMovies = self.__repository.getAll()
-        if orderType == "ASC":
-            return sorted(listOfMovies, key=lambda x: x.title)
-        elif orderType == "DESC":
-            return sorted(listOfMovies, key=lambda x: x.title, reverse=True)
+    def getAll(self, orderType: str, page: Union[int, None]):
+        if page is None:
+            listOfMovies = self.__repository.getAll(orderType)
+        else:
+            listOfMovies = self.__repository.getPage(page, orderType)
         return listOfMovies
 
     def addMovie(self, movie: Movie):
@@ -29,8 +29,10 @@ class Service:
     def deleteMovie(self, movieId: UUID):
         return self.__repository.deleteEntity(movieId)
 
-    def getGenres(self):
-        return self.__repository.getGenres()
+    def getGenres(self, page: Union[int, None]):
+        if page is None:
+            return self.__repository.getGenres()
+        return self.__repository.getGenrePage(page)
 
     def addGenre(self, genre):
         return self.__repository.addGenre(genre)
@@ -69,4 +71,10 @@ class Service:
             except Exception as e:
                 failedCount += 1
         return {"message": f"{count - failedCount} out of {count} operations successful."}
+
+    def getGenreById(self, genreId):
+        return self.__repository.getGenreById(genreId)
+
+    def getMultipleGenres(self, genresId: list[UUID]):
+        return self.__repository.getMultipleGenres(genresId)
 

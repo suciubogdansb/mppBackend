@@ -7,7 +7,7 @@ class RepositoryInterface(ABC):
         pass
 
     @abstractmethod
-    def getAll(self):
+    def getAll(self, orderType):
         pass
 
     @abstractmethod
@@ -44,4 +44,16 @@ class RepositoryInterface(ABC):
         pass
 
     def upsertEntity(self, movie):
+        pass
+
+    def getPage(self, page, orderType):
+        pass
+
+    def getGenrePage(self, page):
+        pass
+
+    def getGenreById(self, genreId):
+        pass
+
+    def getMultipleGenres(self, genresId):
         pass
