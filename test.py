@@ -8,7 +8,7 @@ client = TestClient(app)
 
 
 class MyTestCase(unittest.TestCase):
-    @mock.patch("Service.ServiceInterface.ServiceInterface.getAll")
+    @mock.patch("Service.Service.getAll")
     def test_1_get_all(self, mock_get_all):
         mock_get_all.return_value = []
         response = client.get("/items")

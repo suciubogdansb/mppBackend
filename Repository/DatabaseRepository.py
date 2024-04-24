@@ -55,6 +55,25 @@ class DatabaseRepository(RepositoryInterface):
             raise RepositoryException("Movie not found")
         self.__database.commit()
 
+    def upsertEntity(self, entity: Movie):
+        self.__database = SessionLocal()
+        movie = self.__database.query(MovieModel).filter(MovieModel.movieId == entity.movieId).first()
+        if movie is None:
+            try:
+                movie = MovieModel(**entity.dict())
+                self.__database.add(movie)
+                self.__database.commit()
+                self.__database.refresh(movie)
+                return movie
+            except IntegrityError as e:
+                raise RepositoryException("Key constraints violated")
+        movie.title = entity.title
+        movie.year = entity.year
+        movie.genre_id = entity.genreId
+        self.__database.commit()
+        self.__database.refresh(movie)
+        return movie
+
     def loadData(self):
         pass
 

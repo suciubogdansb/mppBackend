@@ -42,3 +42,6 @@ class RepositoryInterface(ABC):
 
     def deleteGenre(self, id):
         pass
+
+    def upsertEntity(self, movie):
+        pass

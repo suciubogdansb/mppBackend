@@ -11,6 +11,7 @@ from Model.DatabaseModels import models
 from Model.Exceptions.RepositoryException import RepositoryException
 from Model.Schemas.Genre import Genre
 from Model.Schemas.Movie import Movie
+from Model.Schemas.SyncModel import SyncModel
 from Repository.DatabaseRepository import DatabaseRepository
 from Repository.MemoryRepository import MemoryRepository
 from Service.Service import Service
@@ -138,6 +139,10 @@ async def deleteGenre(genreId: UUID):
         service.deleteGenre(genreId)
     except RepositoryException:
         raise HTTPException(status_code=404, detail="Id not found.")
+
+@app.post("/sync")
+async def sync(syncBatch: SyncModel):
+    return service.sync(syncBatch)
 
 
 socketApp = socketio.ASGIApp(socketIo, app)
