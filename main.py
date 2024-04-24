@@ -159,10 +159,16 @@ async def deleteGenre(genreId: UUID):
 async def sync(syncBatch: SyncModel):
     return service.sync(syncBatch)
 
+
 @app.get("/necessary", response_model=list[Genre])
 async def getNecessary(genres: str):
     genres = [uuid.UUID(genre) for genre in genres.split("|")]
     return service.getMultipleGenres(genres)
+
+
+@app.get("/status", status_code=200)
+async def status():
+    return {"status": "OK"}
 
 
 socketApp = socketio.ASGIApp(socketIo, app)
